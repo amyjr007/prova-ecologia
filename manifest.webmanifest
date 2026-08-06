@@ -1,0 +1,35 @@
+{
+  "id": "./",
+  "name": "1ª Avaliação de Ciências — Feliz Lusitânia",
+  "short_name": "Avaliação FL",
+  "description": "Prova objetiva de Ciências sobre Ecologia Básica — 6º ano —, com alternativas sorteadas e nota automática.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#1D3FA0",
+  "background_color": "#0E2153",
+  "categories": ["education"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
