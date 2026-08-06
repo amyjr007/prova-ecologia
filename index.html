@@ -361,6 +361,25 @@ details.gab[open] summary::before{content:"▾ "}
   margin-top:.5rem; border-top:1px dashed var(--line); padding-top:1rem;
   font-size:.75rem; color:var(--ink-faint); text-align:center;
 }
+/* aviso de envio do resultado ao professor */
+.envio{
+  display:flex; align-items:center; gap:.5rem;
+  margin:0; padding:.6rem .8rem; border-radius:.6rem;
+  font-size:.8rem; font-weight:600;
+  background:var(--sheet-2); color:var(--ink-faint);
+  border:1px solid var(--line-soft);
+}
+.envio::before{
+  content:"•"; font-size:1.4rem; line-height:0; color:var(--ink-faint);
+}
+.envio[data-estado="ok"]{ background:#EAF6EC; border-color:#B7DCC0; color:#1F6B33 }
+.envio[data-estado="ok"]::before{ content:"✓"; font-size:.9rem; color:#1F6B33 }
+.envio[data-estado="espera"]{ background:#FDF3E2; border-color:#EBD3A6; color:#8A5A12 }
+.envio[data-estado="espera"]::before{ content:"⟳"; font-size:.9rem; color:#8A5A12 }
+:root[data-theme="dark"] .envio[data-estado="ok"]{ background:#16301E; border-color:#2C5B39; color:#8FD9A4 }
+:root[data-theme="dark"] .envio[data-estado="ok"]::before{ color:#8FD9A4 }
+:root[data-theme="dark"] .envio[data-estado="espera"]{ background:#332813; border-color:#5E4A1E; color:#E8C67C }
+:root[data-theme="dark"] .envio[data-estado="espera"]::before{ color:#E8C67C }
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms !important; transition-duration:.001ms !important}
@@ -512,6 +531,8 @@ details.gab[open] summary::before{content:"▾ "}
 
     <dl class="ident" id="identOut"></dl>
 
+    <p class="envio" id="envioStatus" role="status" hidden></p>
+
     <details class="gab">
       <summary>Ver gabarito e minhas respostas</summary>
       <div class="review" id="review"></div>
@@ -640,6 +661,12 @@ const QUESTOES = [
 
 const LETRAS = ["A","B","C","D"];
 const VALOR = 0.5;
+
+/* ---- envio do resultado ao professor ----
+   Cole abaixo a URL do aplicativo da Web publicado pelo Google Apps Script
+   (ver apps-script/Codigo.gs e o passo a passo no README). Deixando em branco,
+   a prova funciona exatamente como antes e nada é enviado. */
+const ENVIO_URL = "";
 
 const $ = (id) => document.getElementById(id);
 const screens = ["cover","identify","quiz","result"];
@@ -913,6 +940,100 @@ document.addEventListener("keydown", (e) => {
   if(e.key === "Enter" && !$("btnAction").disabled){ e.preventDefault(); $("btnAction").click(); }
 });
 
+/* ---- envio do resultado ----
+   O resultado é gravado no próprio Chromebook antes de sair. Se a prova
+   terminar sem internet, fica na fila e é reenviado sozinho quando a rede
+   voltar ou na próxima vez que o app abrir. Nada é perdido no caminho. */
+const FILA_CHAVE = "prova-ecologia-fila";
+
+function lerFila(){
+  try { return JSON.parse(localStorage.getItem(FILA_CHAVE)) || []; }
+  catch(e){ return []; }
+}
+function gravarFila(fila){
+  try { localStorage.setItem(FILA_CHAVE, JSON.stringify(fila)); } catch(e){}
+}
+function identificador(){
+  if(window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+  return "id-" + Date.now() + "-" + Math.random().toString(36).slice(2,10);
+}
+
+function avisoEnvio(estado, texto){
+  const el = $("envioStatus");
+  if(!el) return;
+  el.hidden = false;
+  el.dataset.estado = estado;
+  el.textContent = texto;
+}
+
+/* text/plain evita a requisição de verificação (preflight) que o Apps Script
+   não responde — é o formato que o Codigo.gs do professor espera receber. */
+function despachar(registro){
+  return fetch(ENVIO_URL, {
+    method: "POST",
+    headers: {"Content-Type": "text/plain;charset=utf-8"},
+    body: JSON.stringify(registro),
+    redirect: "follow",
+    keepalive: true
+  }).then(res => res.ok);
+}
+
+let enviando = false;
+function enviarFila(){
+  if(!ENVIO_URL || enviando) return Promise.resolve();
+  const fila = lerFila();
+  if(!fila.length) return Promise.resolve();
+  if(navigator.onLine === false){
+    avisoEnvio("espera", "Sem internet agora — o resultado vai para o professor assim que a rede voltar.");
+    return Promise.resolve();
+  }
+  enviando = true;
+  // um envio de cada vez: o que falhar continua na fila para a próxima tentativa
+  return fila.reduce((p, reg) => p.then(restantes =>
+    despachar(reg)
+      .then(ok => ok ? restantes : restantes.concat([reg]))
+      .catch(() => restantes.concat([reg]))
+  ), Promise.resolve([])).then(restantes => {
+    gravarFila(restantes);
+    enviando = false;
+    avisoEnvio(
+      restantes.length ? "espera" : "ok",
+      restantes.length
+        ? "Resultado guardado neste Chromebook — será enviado ao professor assim que houver internet."
+        : "Resultado enviado ao professor."
+    );
+  });
+}
+
+function registrarResultado(acertos, nota){
+  if(!ENVIO_URL) return;
+  gravarFila(lerFila().concat([{
+    id: identificador(),
+    prova: "Ecologia Básica — 6º ano",
+    nome: aluno.nome,
+    turma: aluno.turma,
+    turno: aluno.turno || "",
+    data: aluno.data,
+    enviadoEm: new Date().toISOString(),
+    versao: versao,
+    acertos: acertos,
+    total: PROVA.length,
+    nota: nota,
+    respostas: PROVA.map((q, i) => ({
+      n: i + 1,
+      questao: q.q,
+      minha: respostas[i] === null ? "não respondida" : LETRAS[respostas[i]] + ") " + q.o[respostas[i]],
+      gabarito: LETRAS[q.r] + ") " + q.o[q.r],
+      certo: respostas[i] === q.r
+    }))
+  }]));
+  avisoEnvio("espera", "Enviando o resultado ao professor…");
+  enviarFila();
+}
+
+window.addEventListener("online", enviarFila);
+if(ENVIO_URL) enviarFila();   // pendências guardadas em provas anteriores
+
 /* ---- resultado ---- */
 function finalizar(){
   window.removeEventListener("beforeunload", guard);
@@ -965,6 +1086,7 @@ function finalizar(){
 
   show("result");
   tocarResultado();
+  registrarResultado(acertos, nota);
 }
 
 /* ---- PWA: instalação e funcionamento offline ----

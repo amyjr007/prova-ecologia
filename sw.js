@@ -1,7 +1,7 @@
 ﻿/* Service worker da 1ª Avaliação de Ciências (Ecologia Básica) — E.E. Feliz Lusitânia.
    Ao publicar uma versão nova da prova, troque o número em CACHE: é ele que
    descarta o pacote antigo e obriga os Chromebooks a baixar o conteúdo novo. */
-const CACHE = "prova-fl-ecologia-v1";
+const CACHE = "prova-fl-ecologia-v2";
 /* Cada prova tem o seu prefixo: a limpeza abaixo só apaga versões antigas desta
    prova e não derruba o pacote offline das outras avaliações do mesmo site. */
 const PREFIXO = "prova-fl-ecologia-";

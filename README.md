@@ -29,6 +29,43 @@ mostrado na capa e no comprovante impresso, para o professor distinguir as prova
 
 A ordem das questões (1 a 20) é fixa e segue a prova em papel.
 
+## Envio automático do resultado
+
+Quando o aluno termina, o comprovante é gravado numa **planilha do Google** e o
+professor recebe um **e-mail** com a nota e o gabarito comparado. Enquanto a
+constante `ENVIO_URL` (no `index.html`) estiver vazia, nada é enviado e a prova
+funciona exatamente como antes.
+
+### Publicar o recebedor
+
+1. Crie uma planilha nova no Google Drive (com a sua conta).
+2. Nela, vá em **Extensões → Apps Script**.
+3. Apague o conteúdo do editor e cole o arquivo [`apps-script/Codigo.gs`](apps-script/Codigo.gs).
+4. Confira as duas primeiras linhas de configuração: `EMAIL_PROFESSOR` e `ENVIAR_EMAIL`.
+5. **Implantar → Nova implantação → Tipo: app da Web**, com:
+   - *Executar como:* **eu**
+   - *Quem pode acessar:* **qualquer pessoa**
+6. Autorize quando o Google pedir e copie a **URL do app da Web**
+   (termina em `/exec`).
+7. Cole essa URL em `const ENVIO_URL = "";` no `index.html` e publique de novo.
+
+Para conferir, abra a URL `/exec` no navegador: deve responder
+`{"ok":true,"servico":"recebedor de resultados no ar"}`.
+
+### Se o Chromebook estiver sem internet
+
+O resultado é guardado no próprio aparelho e reenviado sozinho quando a rede
+voltar — ou na próxima vez que o app for aberto. O comprovante avisa o aluno em
+qual dos dois estados está. Cada envio leva um identificador próprio, então um
+resultado que chegue duas vezes não vira linha repetida na planilha.
+
+### O que isso não resolve
+
+O endereço do recebedor fica visível no código da página, porque a prova roda
+inteira no navegador do aluno. Quem abrir o inspetor consegue enviar resultados
+falsos. Serve como **registro de conveniência, não como controle antifraude** —
+vale aqui a mesma ressalva da seção *Sobre o gabarito*, no fim deste arquivo.
+
 ## Instalar no Chromebook
 
 Abra o endereço no Chrome e use o botão **Instalar no Chromebook** na capa —
@@ -43,6 +80,7 @@ janela própria e funciona offline.
 | `manifest.webmanifest` | Nome, cores e ícones do app instalado |
 | `sw.js` | Service worker: guarda a prova para abrir sem internet |
 | `icons/` | Ícones do app, gerados a partir do brasão da escola |
+| `apps-script/Codigo.gs` | Recebedor dos resultados: grava na planilha e manda o e-mail |
 
 ## Mexer nas questões
 
